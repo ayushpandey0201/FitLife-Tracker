@@ -1,2 +1,1 @@
-this is a fitness tracker pythone code,
-this is base of data taken from professionals and it hele you paln your diet to gain or loose weight
+This is a fitness tracker written in Python. It is based on data collected from professionals and helps you plan your diet to achieve your weight goals, whether you want to gain or lose weight.
