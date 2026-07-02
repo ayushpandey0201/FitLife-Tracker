@@ -1,0 +1,7 @@
+[
+  { "name": "Yoga",              "met": 3.0 },
+  { "name": "Strength Training", "met": 5.0 },
+  { "name": "Cycling",           "met": 7.5 },
+  { "name": "Swimming",          "met": 8.0 },
+  { "name": "Running",           "met": 9.8 }
+]

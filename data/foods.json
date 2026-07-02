@@ -1,0 +1,24 @@
+[
+  { "name": "Warm Water with Lime Juice", "meal": "breakfast", "vegetarian": true,  "carbs_g": 5,  "protein_g": 0,  "fat_g": 0,  "water_ml": 100 },
+  { "name": "Coffee with low-fat milk",    "meal": "breakfast", "vegetarian": true,  "carbs_g": 10, "protein_g": 5,  "fat_g": 1,  "water_ml": 250 },
+  { "name": "Poha",                        "meal": "breakfast", "vegetarian": true,  "carbs_g": 23, "protein_g": 2,  "fat_g": 5,  "water_ml": 100 },
+  { "name": "Upma",                        "meal": "breakfast", "vegetarian": true,  "carbs_g": 30, "protein_g": 4,  "fat_g": 3,  "water_ml": 200 },
+  { "name": "2 small Dosa",                "meal": "breakfast", "vegetarian": true,  "carbs_g": 50, "protein_g": 6,  "fat_g": 5,  "water_ml": 150 },
+  { "name": "Fruit",                       "meal": "breakfast", "vegetarian": true,  "carbs_g": 15, "protein_g": 1,  "fat_g": 0,  "water_ml": 85 },
+  { "name": "Oatmeal",                     "meal": "breakfast", "vegetarian": true,  "carbs_g": 27, "protein_g": 6,  "fat_g": 4,  "water_ml": 150 },
+  { "name": "Eggs",                        "meal": "breakfast", "vegetarian": false, "carbs_g": 1,  "protein_g": 6,  "fat_g": 5,  "water_ml": 70 },
+
+  { "name": "Salad",                       "meal": "lunch",     "vegetarian": true,  "carbs_g": 10, "protein_g": 5,  "fat_g": 2,  "water_ml": 200 },
+  { "name": "Quinoa",                      "meal": "lunch",     "vegetarian": true,  "carbs_g": 39, "protein_g": 8,  "fat_g": 3,  "water_ml": 180 },
+  { "name": "Paneer Tikka",                "meal": "lunch",     "vegetarian": true,  "carbs_g": 5,  "protein_g": 15, "fat_g": 20, "water_ml": 50 },
+  { "name": "Dal with Rice",               "meal": "lunch",     "vegetarian": true,  "carbs_g": 38, "protein_g": 9,  "fat_g": 3,  "water_ml": 150 },
+  { "name": "Chicken Breast",              "meal": "lunch",     "vegetarian": false, "carbs_g": 0,  "protein_g": 31, "fat_g": 4,  "water_ml": 100 },
+  { "name": "Fish Curry with Rice",        "meal": "lunch",     "vegetarian": false, "carbs_g": 20, "protein_g": 25, "fat_g": 10, "water_ml": 150 },
+
+  { "name": "2 Chapathi",                  "meal": "dinner",    "vegetarian": true,  "carbs_g": 40, "protein_g": 6,  "fat_g": 3,  "water_ml": 100 },
+  { "name": "Vegetable Stir Fry",          "meal": "dinner",    "vegetarian": true,  "carbs_g": 20, "protein_g": 5,  "fat_g": 2,  "water_ml": 100 },
+  { "name": "Soup",                        "meal": "dinner",    "vegetarian": true,  "carbs_g": 15, "protein_g": 5,  "fat_g": 1,  "water_ml": 250 },
+  { "name": "Rajma Rice",                  "meal": "dinner",    "vegetarian": true,  "carbs_g": 30, "protein_g": 8,  "fat_g": 3,  "water_ml": 150 },
+  { "name": "Pasta",                       "meal": "dinner",    "vegetarian": true,  "carbs_g": 50, "protein_g": 10, "fat_g": 2,  "water_ml": 200 },
+  { "name": "Chicken Grill",               "meal": "dinner",    "vegetarian": false, "carbs_g": 0,  "protein_g": 25, "fat_g": 5,  "water_ml": 150 }
+]
