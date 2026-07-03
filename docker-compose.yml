@@ -1,0 +1,23 @@
+# Local development database (Phase 3).
+# Start with:  docker compose up -d db
+# Matches the DATABASE_URL in .env.example.
+services:
+  db:
+    image: postgres:16
+    container_name: fitlife-db
+    environment:
+      POSTGRES_USER: fitlife
+      POSTGRES_PASSWORD: fitlife
+      POSTGRES_DB: fitlife
+    ports:
+      - "5432:5432"
+    volumes:
+      - fitlife_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fitlife -d fitlife"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  fitlife_pgdata:

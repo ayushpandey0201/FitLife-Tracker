@@ -54,10 +54,29 @@ class Settings(BaseSettings):
     app_env: AppEnv = AppEnv.DEVELOPMENT
     log_level: LogLevel = LogLevel.INFO
 
+    # Persistence (Phase 3). Optional: when unset, no engine is created and the
+    # CLI runs statelessly, exactly as before. Example (Postgres via psycopg 3):
+    #   postgresql+psycopg://fitlife:fitlife@localhost:5432/fitlife
+    database_url: str | None = None
+
     @property
     def is_production(self) -> bool:
         """True when running in the production environment."""
         return self.app_env is AppEnv.PRODUCTION
+
+    @property
+    def require_database_url(self) -> str:
+        """Return the configured database URL or raise if it is missing.
+
+        Used by components (repositories, migrations) that cannot function
+        without a database, turning a misconfiguration into a clear error.
+        """
+        if self.database_url is None:
+            raise ValueError(
+                "database_url is not configured; set DATABASE_URL in the "
+                "environment or .env to use persistence."
+            )
+        return self.database_url
 
 
 @lru_cache(maxsize=1)

@@ -10,8 +10,11 @@ authors = [{ name = "Ayush Pandey" }]
 # Runtime dependencies. Kept intentionally minimal per phase; frameworks
 # (FastAPI, SQLAlchemy, etc.) are introduced in later phases as needed.
 dependencies = [
+    "alembic>=1.13",
+    "psycopg[binary]>=3.1",
     "pydantic>=2.7",
     "pydantic-settings>=2.3",
+    "sqlalchemy>=2.0",
 ]
 
 [project.optional-dependencies]
