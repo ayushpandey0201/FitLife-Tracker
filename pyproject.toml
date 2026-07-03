@@ -42,6 +42,8 @@ packages = ["app"]
 target-version = "py312"
 line-length = 100
 src = ["app", "tests"]
+# Alembic-generated revision files follow the tool's own template, not our style.
+extend-exclude = ["migrations/versions"]
 
 [tool.ruff.lint]
 # A pragmatic, production-oriented rule set.

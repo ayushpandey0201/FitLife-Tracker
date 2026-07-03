@@ -19,19 +19,46 @@ app/
 │   ├── models.py      # Pydantic value objects: UserProfile, NutritionPlan, ...
 │   ├── nutrition.py   # BMR / TDEE / calorie target / macro engine (deterministic)
 │   ├── meals.py       # Deterministic meal-plan generation
-│   └── exceptions.py  # Domain error hierarchy
+│   ├── exceptions.py  # Domain error hierarchy
+│   └── repositories.py# Repository *ports* (Protocols) — pure, no storage import
+├── db/                # Persistence infrastructure (only place importing SQLAlchemy)
+│   ├── base.py        # DeclarativeBase + naming convention
+│   ├── engine.py      # Engine/sessionmaker from Settings + session_scope()
+│   └── models.py      # ORM models (UserProfileRecord)
+├── repositories/      # Repository *adapters* (SQLAlchemy) + row<->domain mapping
 ├── config.py          # Typed Settings (pydantic-settings), loaded from .env
 ├── logging_config.py  # Centralised, idempotent logging setup
 ├── catalog.py         # Loads bundled food/exercise data (infrastructure/I/O)
 └── cli.py             # Thin CLI adapter over the domain
 data/                  # foods.json, exercises.json (was inline in the script)
-tests/                 # pytest unit + CLI tests
+migrations/            # Alembic environment + versioned schema migrations
+tests/                 # pytest unit + CLI + repository tests
+docker-compose.yml     # Local Postgres for development
 python_project_vs.py   # Backwards-compatible entrypoint (thin shim over app.cli)
 ```
 
-The `domain` layer imports no framework or I/O. Later phases add persistence
-(SQLAlchemy), an API (FastAPI + JWT) and analytics *around* it without the domain
-depending on them.
+The `domain` layer imports no framework or I/O. Persistence is reached only
+through repository **ports** (`app/domain/repositories.py`) whose SQLAlchemy
+**adapters** live in `app/repositories/`, so the domain never depends on the
+database. Later phases add an API (FastAPI + JWT) and analytics *around* it the
+same way.
+
+## Persistence & migrations
+
+Persistence is **opt-in**: with no `DATABASE_URL` set, the CLI runs statelessly
+(unchanged). To use a database:
+
+```bash
+docker compose up -d db                 # local Postgres (see docker-compose.yml)
+cp .env.example .env                     # then uncomment DATABASE_URL
+uv run alembic upgrade head              # apply migrations
+
+# Author a new migration after changing ORM models:
+uv run alembic revision --autogenerate -m "describe change"
+```
+
+`migrations/env.py` reads the connection URL from the application `Settings`
+(the single source of truth) and targets `app.db.base.Base.metadata`.
 
 ## Getting started
 
@@ -77,7 +104,7 @@ Runtime dependencies are pinned in `requirements.txt` (generated via
 | 0 | uv scaffold, tooling (ruff/mypy/pytest), project structure | ✅ done |
 | 1 | Deterministic domain engine + data extraction + CLI adapter | ✅ done |
 | 2 | Config (pydantic-settings), structured logging, error handling | ✅ done |
-| 3 | Persistence: SQLAlchemy + Alembic + PostgreSQL (docker-compose) | planned |
+| 3 | Persistence: SQLAlchemy + Alembic + PostgreSQL (docker-compose) | ✅ done |
 | 4 | FastAPI app + JWT auth + user profile endpoints | planned |
 | 5 | Tracking & analytics: nutrition/water/exercise/weight logs, progress | planned |
 | 6 | Dockerfile, CI, docs; recommendation seam for future AI features | planned |
