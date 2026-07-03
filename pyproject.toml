@@ -11,6 +11,7 @@ authors = [{ name = "Ayush Pandey" }]
 # (FastAPI, SQLAlchemy, etc.) are introduced in later phases as needed.
 dependencies = [
     "pydantic>=2.7",
+    "pydantic-settings>=2.3",
 ]
 
 [project.optional-dependencies]
