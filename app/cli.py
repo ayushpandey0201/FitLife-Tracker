@@ -18,6 +18,9 @@ from app.domain.enums import ActivityLevel, DietPreference, Sex
 from app.domain.meals import MealPlan, generate_meal_plan
 from app.domain.models import NutritionPlan, UserProfile
 from app.domain.nutrition import build_nutrition_plan
+from app.logging_config import configure_logging, get_logger
+
+logger = get_logger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -118,7 +121,15 @@ def _collect_profile() -> UserProfile:
 
 
 def main() -> None:
-    """CLI entrypoint."""
+    """CLI entrypoint.
+
+    User-facing output uses ``print`` (it is the program's product, not
+    diagnostics); operational events go to the logger so the same domain calls
+    are observable when driven by the API in a later phase.
+    """
+    configure_logging()
+    logger.info("cli_start")
+
     print("FitLife Tracker — deterministic diet & fitness planner\n")
     profile = _collect_profile()
 
@@ -126,6 +137,13 @@ def main() -> None:
     meal_plan = generate_meal_plan(
         plan.macros, plan.calorie_target_kcal, list(load_foods()), profile.diet_preference
     )
+    logger.info(
+        "plan_generated goal=%s calorie_target=%.0f bmi=%.1f",
+        plan.goal.value,
+        plan.calorie_target_kcal,
+        plan.body_metrics.bmi,
+    )
+
     print(_render_plan(profile, plan, meal_plan))
     print("Healthy food for a wealthy mood :)")
 

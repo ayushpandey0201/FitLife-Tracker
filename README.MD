@@ -20,6 +20,8 @@ app/
 │   ├── nutrition.py   # BMR / TDEE / calorie target / macro engine (deterministic)
 │   ├── meals.py       # Deterministic meal-plan generation
 │   └── exceptions.py  # Domain error hierarchy
+├── config.py          # Typed Settings (pydantic-settings), loaded from .env
+├── logging_config.py  # Centralised, idempotent logging setup
 ├── catalog.py         # Loads bundled food/exercise data (infrastructure/I/O)
 └── cli.py             # Thin CLI adapter over the domain
 data/                  # foods.json, exercises.json (was inline in the script)
@@ -74,7 +76,7 @@ Runtime dependencies are pinned in `requirements.txt` (generated via
 |-------|-------|--------|
 | 0 | uv scaffold, tooling (ruff/mypy/pytest), project structure | ✅ done |
 | 1 | Deterministic domain engine + data extraction + CLI adapter | ✅ done |
-| 2 | Config (pydantic-settings), structured logging, error handling | planned |
+| 2 | Config (pydantic-settings), structured logging, error handling | ✅ done |
 | 3 | Persistence: SQLAlchemy + Alembic + PostgreSQL (docker-compose) | planned |
 | 4 | FastAPI app + JWT auth + user profile endpoints | planned |
 | 5 | Tracking & analytics: nutrition/water/exercise/weight logs, progress | planned |
