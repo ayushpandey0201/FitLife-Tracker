@@ -55,6 +55,20 @@ class UserProfile(BaseModel):
         return Goal.MAINTAIN
 
 
+class StoredProfile(BaseModel):
+    """A :class:`UserProfile` with its persistence identity.
+
+    Read model returned by the repository: it pairs the pure domain profile with
+    the surrogate id assigned by the database, without leaking any ORM type into
+    the domain or the callers.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    id: int
+    profile: UserProfile
+
+
 class BodyMetrics(BaseModel):
     """Body composition metrics derived from a profile."""
 
