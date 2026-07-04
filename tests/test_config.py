@@ -19,6 +19,8 @@ def test_defaults_when_env_absent(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_reads_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("APP_ENV", "production")
     monkeypatch.setenv("LOG_LEVEL", "WARNING")
+    # Production requires a non-default secret (enforced by the model validator).
+    monkeypatch.setenv("JWT_SECRET_KEY", "prod-secret-key-at-least-32-bytes!!")
     settings = Settings(_env_file=None)  # type: ignore[call-arg]
     assert settings.app_env is AppEnv.PRODUCTION
     assert settings.log_level is LogLevel.WARNING

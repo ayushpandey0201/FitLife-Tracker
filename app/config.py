@@ -15,7 +15,12 @@ from __future__ import annotations
 from enum import StrEnum
 from functools import lru_cache
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Sentinel dev secret. Safe for local development; forbidden in production (see
+# the model validator below). Never deploy with this value.
+_DEV_JWT_SECRET = "dev-insecure-change-me-please-not-for-production-use"
 
 
 class AppEnv(StrEnum):
@@ -59,10 +64,28 @@ class Settings(BaseSettings):
     #   postgresql+psycopg://fitlife:fitlife@localhost:5432/fitlife
     database_url: str | None = None
 
+    # Authentication / JWT (Phase 4). ``jwt_secret_key`` MUST be overridden in
+    # production (enforced below). Access tokens are short-lived; refresh tokens
+    # are longer-lived and revocable (stored, hashed, in the database).
+    jwt_secret_key: str = _DEV_JWT_SECRET
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 30
+    refresh_token_expire_days: int = 7
+
     @property
     def is_production(self) -> bool:
         """True when running in the production environment."""
         return self.app_env is AppEnv.PRODUCTION
+
+    @model_validator(mode="after")
+    def _forbid_default_secret_in_production(self) -> Settings:
+        """Refuse to boot in production with the insecure default JWT secret."""
+        if self.is_production and self.jwt_secret_key == _DEV_JWT_SECRET:
+            raise ValueError(
+                "jwt_secret_key must be set to a strong, unique value in "
+                "production (the built-in default is insecure)."
+            )
+        return self
 
     @property
     def require_database_url(self) -> str:
