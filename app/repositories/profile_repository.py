@@ -35,9 +35,10 @@ def _to_domain(record: UserProfileRecord) -> StoredProfile:
     return StoredProfile(id=record.id, profile=profile)
 
 
-def _to_record(profile: UserProfile) -> UserProfileRecord:
+def _to_record(user_id: int, profile: UserProfile) -> UserProfileRecord:
     """Map a domain profile to a new ORM row (enums stored as their values)."""
     return UserProfileRecord(
+        user_id=user_id,
         name=profile.name,
         age=profile.age,
         height_cm=profile.height_cm,
@@ -51,24 +52,46 @@ def _to_record(profile: UserProfile) -> UserProfileRecord:
 
 
 class SqlAlchemyProfileRepository:
-    """Concrete :class:`ProfileRepository` backed by a SQLAlchemy session."""
+    """Concrete :class:`ProfileRepository` backed by a SQLAlchemy session.
+
+    Every read is filtered by ``user_id`` so one account can never reach
+    another's data through this adapter.
+    """
 
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def add(self, profile: UserProfile) -> StoredProfile:
-        record = _to_record(profile)
+    def add(self, user_id: int, profile: UserProfile) -> StoredProfile:
+        record = _to_record(user_id, profile)
         self._session.add(record)
         # Flush (not commit) so the id is assigned while leaving the enclosing
         # transaction — owned by the caller/session_scope — in control.
         self._session.flush()
-        logger.info("profile_persisted id=%d", record.id)
+        logger.info("profile_persisted id=%d user_id=%d", record.id, user_id)
         return _to_domain(record)
 
-    def get(self, profile_id: int) -> StoredProfile | None:
-        record = self._session.get(UserProfileRecord, profile_id)
+    def get_for_user(self, user_id: int, profile_id: int) -> StoredProfile | None:
+        stmt = select(UserProfileRecord).where(
+            UserProfileRecord.id == profile_id,
+            UserProfileRecord.user_id == user_id,
+        )
+        record = self._session.scalars(stmt).one_or_none()
         return _to_domain(record) if record is not None else None
 
-    def list_all(self) -> list[StoredProfile]:
-        stmt = select(UserProfileRecord).order_by(UserProfileRecord.id)
+    def get_current(self, user_id: int) -> StoredProfile | None:
+        stmt = (
+            select(UserProfileRecord)
+            .where(UserProfileRecord.user_id == user_id)
+            .order_by(UserProfileRecord.id.desc())
+            .limit(1)
+        )
+        record = self._session.scalars(stmt).one_or_none()
+        return _to_domain(record) if record is not None else None
+
+    def list_for_user(self, user_id: int) -> list[StoredProfile]:
+        stmt = (
+            select(UserProfileRecord)
+            .where(UserProfileRecord.user_id == user_id)
+            .order_by(UserProfileRecord.id.desc())
+        )
         return [_to_domain(r) for r in self._session.scalars(stmt)]
