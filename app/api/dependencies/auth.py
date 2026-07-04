@@ -7,7 +7,6 @@ today, but role checks are wired so adding ``admin`` later needs no plumbing.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, status

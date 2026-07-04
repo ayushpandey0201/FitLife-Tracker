@@ -97,9 +97,7 @@ def create_refresh_token(settings: Settings, *, subject: str, role: str) -> Issu
     )
 
 
-def decode_token(
-    settings: Settings, token: str, *, expected_type: TokenType
-) -> DecodedToken:
+def decode_token(settings: Settings, token: str, *, expected_type: TokenType) -> DecodedToken:
     """Validate a token's signature, expiry, and type; return its payload.
 
     Raises :class:`TokenError` on any invalid, expired, or mismatched-type token.
@@ -114,9 +112,7 @@ def decode_token(
         raise TokenError(str(exc)) from exc
 
     if claims.get("type") != expected_type.value:
-        raise TokenError(
-            f"expected a {expected_type.value} token, got {claims.get('type')!r}"
-        )
+        raise TokenError(f"expected a {expected_type.value} token, got {claims.get('type')!r}")
 
     return DecodedToken(
         subject=claims["sub"],

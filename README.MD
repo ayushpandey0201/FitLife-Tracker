@@ -26,10 +26,15 @@ app/
 │   ├── engine.py      # Engine/sessionmaker from Settings + session_scope()
 │   └── models.py      # ORM models (UserProfileRecord)
 ├── repositories/      # Repository *adapters* (SQLAlchemy) + row<->domain mapping
+├── security/          # Password hashing (Argon2) + JWT create/decode
+├── services/          # Application services (use cases): auth, profile, plan
+├── schemas/           # HTTP request/response models (Pydantic DTOs)
+├── api/               # FastAPI adapter: app factory, routers, DI, error mapping
 ├── config.py          # Typed Settings (pydantic-settings), loaded from .env
 ├── logging_config.py  # Centralised, idempotent logging setup
 ├── catalog.py         # Loads bundled food/exercise data (infrastructure/I/O)
-└── cli.py             # Thin CLI adapter over the domain
+├── cli.py             # Thin CLI adapter over the domain
+└── main.py            # ASGI entrypoint (uvicorn app.main:app)
 data/                  # foods.json, exercises.json (was inline in the script)
 migrations/            # Alembic environment + versioned schema migrations
 tests/                 # pytest unit + CLI + repository tests
@@ -70,7 +75,36 @@ uv pip install -e ".[dev]"
 
 # Run the CLI
 uv run python python_project_vs.py      # or: uv run fitlife-cli
+
+# Run the HTTP API (requires DATABASE_URL; see Persistence & migrations)
+uv run uvicorn app.main:app --reload    # docs at http://127.0.0.1:8000/docs
 ```
+
+## HTTP API
+
+A FastAPI app (`app/api/`) exposes the engine over HTTP with JWT auth. Routes are
+thin adapters: each validates a request schema, calls one application service
+(`app/services/`), and returns a response schema. Service errors are mapped to
+status codes centrally in `app/api/errors.py`; the domain/services layers never
+import HTTP types.
+
+| Method & path            | Auth   | Purpose                                        |
+|--------------------------|--------|------------------------------------------------|
+| `POST /auth/register`    | –      | Create an account                              |
+| `POST /auth/login`       | –      | Exchange credentials for an access/refresh pair|
+| `POST /auth/refresh`     | –      | Rotate a refresh token (old one is revoked)    |
+| `POST /auth/logout`      | –      | Revoke a refresh token (idempotent)            |
+| `GET  /auth/me`          | Bearer | Current authenticated user                     |
+| `POST /profiles`         | Bearer | Create a new profile version                   |
+| `GET  /profiles/current` | Bearer | Current (latest) profile                       |
+| `GET  /profiles`         | Bearer | Profile history (newest first)                 |
+| `POST /plans`            | Bearer | Generate a plan from the current profile       |
+| `GET  /plans`            | Bearer | Plan history (summaries, newest first)         |
+| `GET  /plans/{id}`       | Bearer | Fetch one plan in full (404 if not the caller's)|
+
+Access tokens are short-lived Bearer JWTs; refresh tokens are longer-lived,
+stored **hashed**, and revocable. All profile/plan reads are user-scoped — a
+resource that isn't the caller's returns `404`, so existence isn't leaked.
 
 ## Development
 
@@ -105,6 +139,6 @@ Runtime dependencies are pinned in `requirements.txt` (generated via
 | 1 | Deterministic domain engine + data extraction + CLI adapter | ✅ done |
 | 2 | Config (pydantic-settings), structured logging, error handling | ✅ done |
 | 3 | Persistence: SQLAlchemy + Alembic + PostgreSQL (docker-compose) | ✅ done |
-| 4 | FastAPI app + JWT auth + user profile endpoints | planned |
+| 4 | FastAPI app + JWT auth + user profile endpoints | ✅ done |
 | 5 | Tracking & analytics: nutrition/water/exercise/weight logs, progress | planned |
 | 6 | Dockerfile, CI, docs; recommendation seam for future AI features | planned |

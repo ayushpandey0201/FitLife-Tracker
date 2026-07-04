@@ -50,15 +50,11 @@ class SqlAlchemyPlanRepository:
         return record
 
     def get_for_user(self, user_id: int, plan_id: int) -> PlanRecord | None:
-        stmt = select(PlanRecord).where(
-            PlanRecord.id == plan_id, PlanRecord.user_id == user_id
-        )
+        stmt = select(PlanRecord).where(PlanRecord.id == plan_id, PlanRecord.user_id == user_id)
         return self._session.scalars(stmt).one_or_none()
 
     def list_for_user(self, user_id: int) -> list[PlanRecord]:
         stmt = (
-            select(PlanRecord)
-            .where(PlanRecord.user_id == user_id)
-            .order_by(PlanRecord.id.desc())
+            select(PlanRecord).where(PlanRecord.user_id == user_id).order_by(PlanRecord.id.desc())
         )
         return list(self._session.scalars(stmt))

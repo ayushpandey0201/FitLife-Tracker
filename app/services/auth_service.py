@@ -77,11 +77,7 @@ class AuthService:
         """Validate a refresh token and rotate it for a new pair."""
         decoded = self._decode_refresh(refresh_token)
         stored = self._refresh_tokens.get_by_jti(decoded.jti)
-        if (
-            stored is None
-            or stored.revoked
-            or stored.token_hash != _hash_token(refresh_token)
-        ):
+        if stored is None or stored.revoked or stored.token_hash != _hash_token(refresh_token):
             raise InvalidTokenError("refresh token is not recognised or revoked")
 
         user = self._users.get_by_id(int(decoded.subject))

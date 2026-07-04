@@ -24,12 +24,8 @@ class SqlAlchemyRefreshTokenRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def add(
-        self, *, user_id: int, jti: str, token_hash: str, expires_at: datetime
-    ) -> RefreshToken:
-        token = RefreshToken(
-            user_id=user_id, jti=jti, token_hash=token_hash, expires_at=expires_at
-        )
+    def add(self, *, user_id: int, jti: str, token_hash: str, expires_at: datetime) -> RefreshToken:
+        token = RefreshToken(user_id=user_id, jti=jti, token_hash=token_hash, expires_at=expires_at)
         self._session.add(token)
         self._session.flush()
         return token
