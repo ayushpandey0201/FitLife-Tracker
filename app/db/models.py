@@ -16,7 +16,17 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, func
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -55,6 +65,18 @@ class User(TimestampMixin, Base):
         back_populates="user", cascade="all, delete-orphan"
     )
     plans: Mapped[list[PlanRecord]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    weight_logs: Mapped[list[WeightLog]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    water_logs: Mapped[list[WaterLog]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    food_logs: Mapped[list[FoodLog]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    exercise_logs: Mapped[list[ExerciseLog]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
 
@@ -138,3 +160,92 @@ class RefreshToken(TimestampMixin, Base):
     token_hash: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     revoked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+
+# ---------------------------------------------------------------------------
+# Tracking logs (Phase 5)
+#
+# Four user-owned, time-stamped tables — one per tracked quantity. Each shares
+# id / user_id / ``logged_at`` (server-defaulted to now, but caller-overridable
+# to back-date) via the abstract ``TrackingLog`` base, plus a composite
+# ``(user_id, logged_at)`` index, because every read is "this user's entries
+# within a time window", newest first.
+# ---------------------------------------------------------------------------
+
+
+class TrackingLog(TimestampMixin, Base):
+    """Abstract base for user-owned, time-stamped tracking rows.
+
+    ``__abstract__`` means no table of its own: SQLAlchemy copies these columns
+    onto each concrete subclass. Sharing them here removes four-way duplication
+    and gives a single typed base the repository can be generic over.
+    """
+
+    __abstract__ = True
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    logged_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class WeightLog(TrackingLog):
+    """A recorded body-weight measurement."""
+
+    __tablename__ = "weight_logs"
+    __table_args__ = (Index("ix_weight_logs_user_logged_at", "user_id", "logged_at"),)
+
+    weight_kg: Mapped[float] = mapped_column(Float, nullable=False)
+    note: Mapped[str | None] = mapped_column(String(280), nullable=True)
+
+    user: Mapped[User] = relationship(back_populates="weight_logs")
+
+
+class WaterLog(TrackingLog):
+    """A recorded water-intake measurement."""
+
+    __tablename__ = "water_logs"
+    __table_args__ = (Index("ix_water_logs_user_logged_at", "user_id", "logged_at"),)
+
+    volume_ml: Mapped[float] = mapped_column(Float, nullable=False)
+
+    user: Mapped[User] = relationship(back_populates="water_logs")
+
+
+class FoodLog(TrackingLog):
+    """A recorded food/meal with its nutrition as consumed."""
+
+    __tablename__ = "food_logs"
+    __table_args__ = (Index("ix_food_logs_user_logged_at", "user_id", "logged_at"),)
+
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    # Enum value persisted as a string, or NULL when the meal is unspecified.
+    meal: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    calories_kcal: Mapped[float] = mapped_column(Float, nullable=False)
+    protein_g: Mapped[float] = mapped_column(Float, nullable=False)
+    carbs_g: Mapped[float] = mapped_column(Float, nullable=False)
+    fat_g: Mapped[float] = mapped_column(Float, nullable=False)
+
+    user: Mapped[User] = relationship(back_populates="food_logs")
+
+
+class ExerciseLog(TrackingLog):
+    """A recorded exercise session and its derived energy expenditure.
+
+    ``met`` and ``calories_burned_kcal`` are computed at log time (from the
+    catalogue MET and the user's then-current weight) and stored, so historical
+    entries stay stable even if the catalogue or the user's weight later change.
+    """
+
+    __tablename__ = "exercise_logs"
+    __table_args__ = (Index("ix_exercise_logs_user_logged_at", "user_id", "logged_at"),)
+
+    exercise: Mapped[str] = mapped_column(String(100), nullable=False)
+    duration_min: Mapped[float] = mapped_column(Float, nullable=False)
+    met: Mapped[float] = mapped_column(Float, nullable=False)
+    calories_burned_kcal: Mapped[float] = mapped_column(Float, nullable=False)
+
+    user: Mapped[User] = relationship(back_populates="exercise_logs")
