@@ -1,0 +1,34 @@
+# Keep the build context small and reproducible. In particular, never copy the
+# host virtualenv into the image — the container builds its own.
+.venv/
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+
+# VCS & CI
+.git/
+.github/
+
+# Local state, caches, coverage
+*.db
+*.sqlite3
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# Local env & editor
+.env
+.env.*
+!.env.example
+.DS_Store
+.idea/
+.vscode/
+.claude/
+
+# Docs/compose not needed at runtime
+docker-compose.yml
+Dockerfile
+.dockerignore

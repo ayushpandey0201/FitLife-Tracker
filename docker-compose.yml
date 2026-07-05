@@ -1,6 +1,9 @@
-# Local development database (Phase 3).
-# Start with:  docker compose up -d db
-# Matches the DATABASE_URL in .env.example.
+# Local full stack: Postgres + the FitLife API.
+#
+#   docker compose up -d db          # just the database (Phase 3+)
+#   docker compose up --build api    # database + API at http://localhost:8000
+#
+# The api service waits for a healthy database, applies migrations, then serves.
 services:
   db:
     image: postgres:16
@@ -18,6 +21,25 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  api:
+    build: .
+    container_name: fitlife-api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APP_ENV: production
+      # Reach Postgres by its compose service name from inside the network.
+      DATABASE_URL: postgresql+psycopg://fitlife:fitlife@db:5432/fitlife
+      # Dev-only secret; override with a strong value for any real deployment.
+      JWT_SECRET_KEY: local-compose-secret-change-me-32bytes-min
+    ports:
+      - "8000:8000"
+    # Apply migrations, then hand off (exec) to the image's uvicorn command.
+    command: >
+      sh -c "alembic upgrade head &&
+             exec uvicorn app.main:app --host 0.0.0.0 --port 8000"
 
 volumes:
   fitlife_pgdata:
