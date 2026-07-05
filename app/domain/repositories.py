@@ -62,9 +62,7 @@ class TrackingRepository(Protocol):
     """
 
     # -- weight --------------------------------------------------------------
-    def add_weight(
-        self, user_id: int, entry: WeightEntry, logged_at: datetime
-    ) -> LoggedWeight: ...
+    def add_weight(self, user_id: int, entry: WeightEntry, logged_at: datetime) -> LoggedWeight: ...
 
     def list_weights(
         self,
@@ -77,9 +75,7 @@ class TrackingRepository(Protocol):
     def delete_weight(self, user_id: int, log_id: int) -> bool: ...
 
     # -- water ---------------------------------------------------------------
-    def add_water(
-        self, user_id: int, entry: WaterEntry, logged_at: datetime
-    ) -> LoggedWater: ...
+    def add_water(self, user_id: int, entry: WaterEntry, logged_at: datetime) -> LoggedWater: ...
 
     def list_waters(
         self,
@@ -92,9 +88,7 @@ class TrackingRepository(Protocol):
     def delete_water(self, user_id: int, log_id: int) -> bool: ...
 
     # -- food ----------------------------------------------------------------
-    def add_food(
-        self, user_id: int, entry: FoodEntry, logged_at: datetime
-    ) -> LoggedFood: ...
+    def add_food(self, user_id: int, entry: FoodEntry, logged_at: datetime) -> LoggedFood: ...
 
     def list_foods(
         self,

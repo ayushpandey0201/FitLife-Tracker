@@ -51,9 +51,7 @@ def _day_window(day: date) -> tuple[datetime, datetime]:
     return start, start + timedelta(days=1)
 
 
-def _range_window(
-    start: date | None, end: date | None
-) -> tuple[datetime | None, datetime | None]:
+def _range_window(start: date | None, end: date | None) -> tuple[datetime | None, datetime | None]:
     """Turn optional start/end *dates* into an inclusive-day UTC datetime window."""
     start_dt = datetime.combine(start, time.min, tzinfo=UTC) if start else None
     # ``end`` is inclusive of the whole day, so the exclusive bound is the next day.
@@ -117,15 +115,11 @@ class TrackingService:
         """
         current = self._profiles.get_current(user_id)
         if current is None:
-            raise ProfileNotFoundError(
-                "a profile is required to log exercise (for body weight)"
-            )
+            raise ProfileNotFoundError("a profile is required to log exercise (for body weight)")
 
         met = self._lookup_met(entry.exercise)
         weight_kg = current.profile.weight_kg
-        burned = calories_burned(
-            met=met, weight_kg=weight_kg, duration_min=entry.duration_min
-        )
+        burned = calories_burned(met=met, weight_kg=weight_kg, duration_min=entry.duration_min)
         return self._repo.add_exercise(
             user_id,
             exercise=entry.exercise,

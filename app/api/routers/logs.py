@@ -94,9 +94,7 @@ def delete_water(log_id: int, user: CurrentUser, tracking: TrackingServiceDep) -
     status_code=status.HTTP_201_CREATED,
     summary="Record a food/meal",
 )
-def log_food(
-    payload: FoodLogCreate, user: CurrentUser, tracking: TrackingServiceDep
-) -> FoodLogOut:
+def log_food(payload: FoodLogCreate, user: CurrentUser, tracking: TrackingServiceDep) -> FoodLogOut:
     """Record a food entry with its nutrition as consumed."""
     return tracking.log_food(user.id, payload)
 
@@ -134,12 +132,8 @@ def log_exercise(
     return tracking.log_exercise(user.id, payload)
 
 
-@router.get(
-    "/exercise", response_model=list[ExerciseLogOut], summary="Exercise history"
-)
-def list_exercises(
-    user: CurrentUser, tracking: TrackingServiceDep
-) -> list[ExerciseLogOut]:
+@router.get("/exercise", response_model=list[ExerciseLogOut], summary="Exercise history")
+def list_exercises(user: CurrentUser, tracking: TrackingServiceDep) -> list[ExerciseLogOut]:
     """List the user's exercise entries, newest first."""
     return tracking.list_exercises(user.id)
 
@@ -149,8 +143,6 @@ def list_exercises(
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete an exercise entry",
 )
-def delete_exercise(
-    log_id: int, user: CurrentUser, tracking: TrackingServiceDep
-) -> None:
+def delete_exercise(log_id: int, user: CurrentUser, tracking: TrackingServiceDep) -> None:
     """Delete one of the user's exercise entries (404 if it isn't theirs)."""
     tracking.delete_exercise(user.id, log_id)

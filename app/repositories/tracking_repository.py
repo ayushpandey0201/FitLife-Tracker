@@ -38,9 +38,7 @@ LogT = TypeVar("LogT", bound=TrackingLog)
 
 
 def _weight_to_domain(row: WeightLog) -> LoggedWeight:
-    return LoggedWeight(
-        id=row.id, logged_at=row.logged_at, weight_kg=row.weight_kg, note=row.note
-    )
+    return LoggedWeight(id=row.id, logged_at=row.logged_at, weight_kg=row.weight_kg, note=row.note)
 
 
 def _water_to_domain(row: WaterLog) -> LoggedWater:
@@ -108,9 +106,7 @@ class SqlAlchemyTrackingRepository:
         return True
 
     # -- weight --------------------------------------------------------------
-    def add_weight(
-        self, user_id: int, entry: WeightEntry, logged_at: datetime
-    ) -> LoggedWeight:
+    def add_weight(self, user_id: int, entry: WeightEntry, logged_at: datetime) -> LoggedWeight:
         row = WeightLog(
             user_id=user_id,
             logged_at=logged_at,
@@ -137,9 +133,7 @@ class SqlAlchemyTrackingRepository:
         return self._delete(WeightLog, user_id, log_id)
 
     # -- water ---------------------------------------------------------------
-    def add_water(
-        self, user_id: int, entry: WaterEntry, logged_at: datetime
-    ) -> LoggedWater:
+    def add_water(self, user_id: int, entry: WaterEntry, logged_at: datetime) -> LoggedWater:
         row = WaterLog(user_id=user_id, logged_at=logged_at, volume_ml=entry.volume_ml)
         self._persist(row)
         logger.info("water_logged id=%d user_id=%d", row.id, user_id)
@@ -161,9 +155,7 @@ class SqlAlchemyTrackingRepository:
         return self._delete(WaterLog, user_id, log_id)
 
     # -- food ----------------------------------------------------------------
-    def add_food(
-        self, user_id: int, entry: FoodEntry, logged_at: datetime
-    ) -> LoggedFood:
+    def add_food(self, user_id: int, entry: FoodEntry, logged_at: datetime) -> LoggedFood:
         row = FoodLog(
             user_id=user_id,
             logged_at=logged_at,
@@ -185,9 +177,7 @@ class SqlAlchemyTrackingRepository:
         start: datetime | None = None,
         end: datetime | None = None,
     ) -> list[LoggedFood]:
-        stmt = self._window(
-            select(FoodLog).where(FoodLog.user_id == user_id), FoodLog, start, end
-        )
+        stmt = self._window(select(FoodLog).where(FoodLog.user_id == user_id), FoodLog, start, end)
         return [_food_to_domain(r) for r in self._session.scalars(stmt)]
 
     def delete_food(self, user_id: int, log_id: int) -> bool:
