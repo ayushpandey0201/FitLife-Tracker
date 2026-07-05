@@ -30,3 +30,11 @@ class ProfileNotFoundError(ServiceError):
 
 class PlanNotFoundError(ServiceError):
     """Raised when a requested plan does not exist for the user (→ HTTP 404)."""
+
+
+class LogNotFoundError(ServiceError):
+    """Raised when a tracking log to delete does not exist for the user (→ 404)."""
+
+
+class UnknownExerciseError(ServiceError):
+    """Raised when a logged exercise is not in the catalogue (→ HTTP 404)."""
