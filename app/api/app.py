@@ -12,7 +12,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from app.api.errors import register_error_handlers
-from app.api.routers import auth, plan, profile
+from app.api.routers import auth, logs, plan, profile, progress
 from app.config import Settings, get_settings
 from app.logging_config import configure_logging
 
@@ -33,7 +33,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     register_error_handlers(app)
 
-    for router in (auth.router, profile.router, plan.router):
+    for router in (
+        auth.router,
+        profile.router,
+        plan.router,
+        logs.router,
+        progress.router,
+    ):
         app.include_router(router)
 
     @app.get("/health", tags=["meta"], summary="Liveness probe")

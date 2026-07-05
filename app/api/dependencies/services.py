@@ -16,6 +16,7 @@ from app.api.dependencies.auth import SessionDep, SettingsDep
 from app.services.auth_service import AuthService
 from app.services.plan_service import PlanService
 from app.services.profile_service import ProfileService
+from app.services.tracking_service import TrackingService
 
 
 def provide_auth_service(session: SessionDep, settings: SettingsDep) -> AuthService:
@@ -33,6 +34,12 @@ def provide_plan_service(session: SessionDep) -> PlanService:
     return PlanService(session)
 
 
+def provide_tracking_service(session: SessionDep) -> TrackingService:
+    """Build the :class:`TrackingService` for this request."""
+    return TrackingService(session)
+
+
 AuthServiceDep = Annotated[AuthService, Depends(provide_auth_service)]
 ProfileServiceDep = Annotated[ProfileService, Depends(provide_profile_service)]
 PlanServiceDep = Annotated[PlanService, Depends(provide_plan_service)]
+TrackingServiceDep = Annotated[TrackingService, Depends(provide_tracking_service)]

@@ -15,9 +15,11 @@ from app.services.exceptions import (
     EmailAlreadyExistsError,
     InvalidCredentialsError,
     InvalidTokenError,
+    LogNotFoundError,
     PlanNotFoundError,
     ProfileNotFoundError,
     ServiceError,
+    UnknownExerciseError,
 )
 
 # Each service error maps to exactly one status code. 401s advertise Bearer auth.
@@ -27,6 +29,8 @@ _STATUS_BY_ERROR: dict[type[ServiceError], int] = {
     InvalidTokenError: status.HTTP_401_UNAUTHORIZED,
     ProfileNotFoundError: status.HTTP_404_NOT_FOUND,
     PlanNotFoundError: status.HTTP_404_NOT_FOUND,
+    LogNotFoundError: status.HTTP_404_NOT_FOUND,
+    UnknownExerciseError: status.HTTP_404_NOT_FOUND,
 }
 
 
