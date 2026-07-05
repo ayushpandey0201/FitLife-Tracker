@@ -12,7 +12,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from app.api.errors import register_error_handlers
-from app.api.routers import auth, logs, plan, profile, progress
+from app.api.routers import auth, logs, plan, profile, progress, recommendations
 from app.config import Settings, get_settings
 from app.logging_config import configure_logging
 
@@ -39,6 +39,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         plan.router,
         logs.router,
         progress.router,
+        recommendations.router,
     ):
         app.include_router(router)
 

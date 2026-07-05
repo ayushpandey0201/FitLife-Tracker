@@ -16,6 +16,7 @@ from app.api.dependencies.auth import SessionDep, SettingsDep
 from app.services.auth_service import AuthService
 from app.services.plan_service import PlanService
 from app.services.profile_service import ProfileService
+from app.services.recommendation_service import RecommendationService
 from app.services.tracking_service import TrackingService
 
 
@@ -39,7 +40,18 @@ def provide_tracking_service(session: SessionDep) -> TrackingService:
     return TrackingService(session)
 
 
+def provide_recommendation_service(session: SessionDep) -> RecommendationService:
+    """Build the :class:`RecommendationService` for this request.
+
+    Uses the default rule-based recommender. To ship an AI recommender, override
+    this provider in the app's ``dependency_overrides`` (or pass one here) — no
+    router or service code changes.
+    """
+    return RecommendationService(session)
+
+
 AuthServiceDep = Annotated[AuthService, Depends(provide_auth_service)]
 ProfileServiceDep = Annotated[ProfileService, Depends(provide_profile_service)]
 PlanServiceDep = Annotated[PlanService, Depends(provide_plan_service)]
 TrackingServiceDep = Annotated[TrackingService, Depends(provide_tracking_service)]
+RecommendationServiceDep = Annotated[RecommendationService, Depends(provide_recommendation_service)]
