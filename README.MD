@@ -1,13 +1,56 @@
 # FitLife Tracker
 
-An evidence-based fitness & nutrition engine. Given your body metrics and a
-weight goal, it computes **BMR → TDEE → a safe calorie target → macro &
-hydration targets**, then generates a **deterministic, calorie-matched meal
-plan**.
+> An evidence-based fitness & nutrition backend — deterministic, typed, and
+> layered (Clean Architecture), built to power web/mobile clients.
 
-Originally a single-file CLI script, it is being migrated to a production-quality,
-layered backend (Clean Architecture) that will power web/mobile clients. See the
-[migration plan](#migration-plan) below.
+[![CI](https://github.com/ayushpandey0201/FitLife-Tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/ayushpandey0201/FitLife-Tracker/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-ASGI-009688?logo=fastapi&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-109%20passing-brightgreen)
+![License](https://img.shields.io/badge/license-MIT-black)
+
+Given your body metrics and a weight goal, FitLife computes
+**BMR → TDEE → a safe calorie target → macro & hydration targets**, then generates
+a **deterministic, calorie-matched meal plan**. On top of that engine it adds
+accounts and JWT auth, persistent profiles and plans, day-to-day **tracking**
+(weight / water / food / exercise), **progress analytics**, and **personalised
+recommendations** behind a seam ready for a future AI recommender.
+
+It began life as a single ~400-line script and was migrated, phase by phase, into
+a production-quality backend. **📄 For the full story — objective, phase-by-phase
+build, tech stack, and roadmap — see [`docs/PROJECT_REPORT.md`](docs/PROJECT_REPORT.md).**
+
+## Highlights
+
+- **Clean / Hexagonal Architecture** — a pure, fully-typed `domain` layer with no
+  framework or I/O, reached only through repository **ports** (Protocols).
+- **Deterministic engine** — same input always yields the same advice (the
+  original used `random.*`); every legacy bug is fixed and pinned by a test.
+- **Real auth** — Argon2 password hashing, short-lived access tokens, and
+  **rotating, revocable refresh tokens** (stored hashed) for genuine logout.
+- **Tracking & analytics** — user-scoped logs with server-derived exercise energy
+  and UTC-bucketed daily summaries / weight trends.
+- **AI-ready** — a `Recommender` port whose default is rule-based; swapping in an
+  LLM is one provider override, no contract change.
+- **Production hygiene** — strict `mypy`, `ruff` lint + format, **109 tests**,
+  Alembic migrations, a multi-stage non-root Docker image, and GitHub Actions CI.
+
+## Quick start
+
+Full stack (Postgres + API) in one command — requires Docker:
+
+```bash
+docker compose up --build -d api      # auto-migrates, then serves
+# → interactive API docs at http://localhost:8000/docs
+docker compose down                   # stop (add -v to wipe the DB volume)
+```
+
+> **macOS note:** if `docker compose` reports `error getting credentials`, prefix
+> the command with `PATH="/Applications/Docker.app/Contents/Resources/bin:$PATH"`
+> (the Homebrew `docker` CLI can't find Docker Desktop's credential helper).
+
+Prefer running from source with hot reload? See [Running it](#running-it).
 
 ## Architecture
 
@@ -39,48 +82,19 @@ app/
 └── main.py            # ASGI entrypoint (uvicorn app.main:app)
 data/                  # foods.json, exercises.json (was inline in the script)
 migrations/            # Alembic environment + versioned schema migrations
-tests/                 # pytest unit + CLI + repository tests
-docker-compose.yml     # Local Postgres for development
+tests/                 # pytest: domain, services, repositories, CLI, and API
+docs/                  # Project report and supporting documentation
+Dockerfile             # Multi-stage, non-root runtime image
+docker-compose.yml     # Local Postgres + API stack
+.github/workflows/     # GitHub Actions CI (lint, type-check, tests, migrations)
 python_project_vs.py   # Backwards-compatible entrypoint (thin shim over app.cli)
 ```
 
 The `domain` layer imports no framework or I/O. Persistence is reached only
 through repository **ports** (`app/domain/repositories.py`) whose SQLAlchemy
 **adapters** live in `app/repositories/`, so the domain never depends on the
-database. Later phases add an API (FastAPI + JWT) and analytics *around* it the
-same way.
-
-## Persistence & migrations
-
-Persistence is **opt-in**: with no `DATABASE_URL` set, the CLI runs statelessly
-(unchanged). To use a database:
-
-```bash
-docker compose up -d db                 # local Postgres (see docker-compose.yml)
-cp .env.example .env                     # then uncomment DATABASE_URL
-uv run alembic upgrade head              # apply migrations
-
-# Author a new migration after changing ORM models:
-uv run alembic revision --autogenerate -m "describe change"
-```
-
-`migrations/env.py` reads the connection URL from the application `Settings`
-(the single source of truth) and targets `app.db.base.Base.metadata`.
-
-## Getting started
-
-Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
-
-```bash
-uv venv --python 3.12
-uv pip install -e ".[dev]"
-
-# Run the CLI
-uv run python python_project_vs.py      # or: uv run fitlife-cli
-
-# Run the HTTP API (requires DATABASE_URL; see Persistence & migrations)
-uv run uvicorn app.main:app --reload    # docs at http://127.0.0.1:8000/docs
-```
+database. The API (FastAPI + JWT), tracking analytics, and recommendations are all
+built *around* the domain the same way — as adapters, never the other way round.
 
 ## HTTP API
 
@@ -109,12 +123,13 @@ import HTTP types.
 | `GET  /progress/daily`   | Bearer | Daily summary (calories in/out, macros, water) |
 | `GET  /progress/weight`  | Bearer | Weight series + net change over a date range   |
 | `GET  /recommendations`  | Bearer | Personalised guidance from profile + plan + logs |
+| `GET  /health`           | –      | Liveness probe                                 |
 
 Access tokens are short-lived Bearer JWTs; refresh tokens are longer-lived,
 stored **hashed**, and revocable. All profile/plan/log reads are user-scoped — a
 resource that isn't the caller's returns `404`, so existence isn't leaked.
 
-### Tracking & progress (Phase 5)
+### Tracking & progress
 
 Users log what actually happened — weigh-ins, water, food (with its nutrition),
 and exercise. Exercise **calories burned** are derived server-side from the
@@ -125,15 +140,15 @@ views aggregate logs by **UTC** day: `/progress/daily` sums calories in vs out,
 macros, and water; `/progress/weight` returns the weight series and its net
 change. All the arithmetic lives in the pure `app/domain/tracking.py`.
 
-### Recommendations & the AI seam (Phase 6)
+### Recommendations & the AI seam
 
 `GET /recommendations` returns personalised, actionable guidance (hydration,
 protein, calories, weight-trend, activity, logging) built from the user's
-profile, plan targets, and what they logged today. The point of the phase is the
-**seam**, not the rules: `app/domain/recommendations.py` defines a `Recommender`
-**port** (Protocol), and today's `RuleBasedRecommender` is one deterministic
-adapter behind it. `RecommendationService` assembles a pure `RecommendationContext`
-and delegates to whichever recommender is injected.
+profile, plan targets, and what they logged today. The point is the **seam**, not
+the rules: `app/domain/recommendations.py` defines a `Recommender` **port**
+(Protocol), and today's `RuleBasedRecommender` is one deterministic adapter behind
+it. `RecommendationService` assembles a pure `RecommendationContext` and delegates
+to whichever recommender is injected.
 
 To add AI later, implement `Recommender` (e.g. an LLM given the same context) and
 override one provider — `provide_recommendation_service` in
@@ -141,20 +156,57 @@ override one provider — `provide_recommendation_service` in
 the HTTP contract is unchanged. Keeping the context pure (no I/O) means the AI
 adapter receives exactly the data it needs and stays independently testable.
 
+## Persistence & migrations
+
+Persistence is **opt-in**: with no `DATABASE_URL` set, the CLI runs statelessly
+(unchanged). To use a database:
+
+```bash
+docker compose up -d db                  # local Postgres (see docker-compose.yml)
+cp .env.example .env                     # then uncomment DATABASE_URL
+uv run alembic upgrade head              # apply migrations
+
+# Author a new migration after changing ORM models:
+uv run alembic revision --autogenerate -m "describe change"
+```
+
+`migrations/env.py` reads the connection URL from the application `Settings` (the
+single source of truth) and targets `app.db.base.Base.metadata`.
+
+## Running it
+
+Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
+
+```bash
+uv venv --python 3.12
+uv pip install -e ".[dev]"
+```
+
+**CLI (no database):**
+
+```bash
+uv run python python_project_vs.py       # or: uv run fitlife-cli
+```
+
+**HTTP API from source (hot reload):**
+
+```bash
+docker compose up -d db                  # Postgres
+cp .env.example .env                     # uncomment DATABASE_URL
+uv run alembic upgrade head              # migrate
+uv run uvicorn app.main:app --reload     # → http://127.0.0.1:8000/docs
+```
+
+**Full stack in Docker:** see [Quick start](#quick-start).
+
 ## Docker
 
 A multi-stage `Dockerfile` (uv build → slim, non-root runtime) serves the API;
-`docker-compose.yml` runs the full stack locally:
-
-```bash
-docker compose up --build api      # Postgres + API at http://localhost:8000
-```
-
-The `api` service waits for a healthy database, applies `alembic upgrade head`,
-then serves. A container never assumes it owns the schema — migrations are an
-explicit step (run separately in production). Override `JWT_SECRET_KEY` with a
-strong value for any real deployment (the app refuses to boot in `production`
-with the built-in dev secret).
+`docker-compose.yml` runs the full stack locally. The `api` service waits for a
+healthy database, applies `alembic upgrade head`, then serves. A container never
+assumes it owns the schema — migrations are an explicit step (run separately in
+production). Override `JWT_SECRET_KEY` with a strong value for any real deployment
+(the app refuses to boot in `production` with the built-in dev secret).
 
 ## Continuous integration
 
@@ -162,8 +214,8 @@ with the built-in dev secret).
 
 - **quality** — `ruff format --check`, `ruff check`, `mypy` (strict), and
   `pytest` with coverage;
-- **migrations** — applies the Alembic migrations against a real Postgres
-  service and asserts no schema drift (`alembic check`).
+- **migrations** — applies the Alembic migrations against a real Postgres service
+  and asserts no schema drift (`alembic check`).
 
 ## Development
 
@@ -171,7 +223,7 @@ with the built-in dev secret).
 uv run ruff format app tests     # format
 uv run ruff check app tests      # lint
 uv run mypy                      # type-check (strict)
-uv run pytest                    # tests
+uv run pytest                    # tests (109)
 ```
 
 Runtime dependencies are pinned in `requirements.txt` (generated via
@@ -180,10 +232,10 @@ Runtime dependencies are pinned in `requirements.txt` (generated via
 
 ## What changed vs. the original
 
-- **Correctness:** BMR now uses *current* weight (not target); the calorie
-  deficit is applied once (not double-counted); intake is floored to a safe
-  minimum; invalid input (age 0, `weeks_to_target` 0, unknown sex) is rejected
-  instead of crashing.
+- **Correctness:** BMR now uses *current* weight (not target); the calorie deficit
+  is applied once (not double-counted); intake is floored to a safe minimum;
+  invalid input (age 0, `weeks_to_target` 0, unknown sex) is rejected instead of
+  crashing.
 - **Determinism:** macro targets and meal selection are now computed from the
   calorie goal — the original used `random.randint` / `random.choice`, so advice
   changed on every run.
@@ -191,6 +243,9 @@ Runtime dependencies are pinned in `requirements.txt` (generated via
   no longer executes on import.
 
 ## Migration plan
+
+All phases are complete — see [`docs/PROJECT_REPORT.md`](docs/PROJECT_REPORT.md)
+for the detailed breakdown and the future agenda.
 
 | Phase | Scope | Status |
 |-------|-------|--------|
@@ -201,3 +256,7 @@ Runtime dependencies are pinned in `requirements.txt` (generated via
 | 4 | FastAPI app + JWT auth + user profile endpoints | ✅ done |
 | 5 | Tracking & analytics: nutrition/water/exercise/weight logs, progress | ✅ done |
 | 6 | Dockerfile, CI, docs; recommendation seam for future AI features | ✅ done |
+
+## License
+
+MIT — see the `license` field in `pyproject.toml`.
