@@ -95,6 +95,8 @@ class RuleBasedRecommender:
     Each rule inspects the context and may append one recommendation. Rules are
     evidence-aligned and intentionally conservative — they only critique a day
     that has some data, and reinforce good adherence rather than only warning.
+    When a day has been logged but no rule fires, a positive fallback keeps the
+    user encouraged rather than returning nothing.
     """
 
     def recommend(self, context: RecommendationContext) -> list[Recommendation]:
@@ -110,7 +112,23 @@ class RuleBasedRecommender:
             rec = rule(context)
             if rec is not None:
                 recs.append(rec)
+        # Reaching here empty means the day has data (an empty day is caught by
+        # `_logging`) but nothing warranted a flag — reinforce, don't go silent.
+        if not recs:
+            recs.append(self._all_clear())
         return recs
+
+    @staticmethod
+    def _all_clear() -> Recommendation:
+        """Positive fallback when a logged day raised no other recommendation."""
+        return Recommendation(
+            category=RecommendationCategory.LOGGING,
+            level=RecommendationLevel.SUCCESS,
+            message=(
+                "Nothing to flag right now — keep logging meals, water, and "
+                "workouts to stay on track."
+            ),
+        )
 
     # -- individual rules ----------------------------------------------------
     @staticmethod

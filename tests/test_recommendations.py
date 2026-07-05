@@ -138,6 +138,16 @@ def test_weight_trend_on_goal_praises() -> None:
     assert weight_recs and weight_recs[0].level is RecommendationLevel.SUCCESS
 
 
+def test_active_but_underlogged_day_gets_encouragement() -> None:
+    # Only an exercise logged: no rule fires, but the day isn't empty — the
+    # positive fallback should keep the user encouraged (never an empty list).
+    ctx = _context(_summary(_dt(4).date(), burned=300, exercise_count=1))
+    recs = _RECOMMENDER.recommend(ctx)
+    assert len(recs) == 1
+    assert recs[0].category is RecommendationCategory.LOGGING
+    assert recs[0].level is RecommendationLevel.SUCCESS
+
+
 def test_is_deterministic() -> None:
     ctx = _context(_summary(_dt(4).date(), consumed=500, food_count=2, protein=20, water=1000))
     assert _RECOMMENDER.recommend(ctx) == _RECOMMENDER.recommend(ctx)
