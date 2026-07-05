@@ -203,3 +203,124 @@ def test_plan_isolated_per_user(client: TestClient) -> None:
     token_b = _register_and_login(client, email="b@example.com")
     # B cannot see A's plan — 404, not 403 (existence is not leaked).
     assert client.get(f"/plans/{plan_id}", headers=_auth(token_b)).status_code == 404
+
+
+# --- tracking logs (Phase 5) -----------------------------------------------
+def _user_with_profile(client: TestClient, email: str = "a@example.com") -> str:
+    """Register/login and attach a profile; return the auth header value."""
+    token = _register_and_login(client, email=email)
+    r = client.post("/profiles", headers=_auth(token), json=_PROFILE_PAYLOAD)
+    assert r.status_code == 201, r.text
+    return token
+
+
+def test_logs_require_auth(client: TestClient) -> None:
+    assert client.get("/logs/weight").status_code == 401
+    assert client.post("/logs/water", json={"volume_ml": 500}).status_code == 401
+
+
+def test_weight_log_crud_flow(client: TestClient) -> None:
+    token = _user_with_profile(client)
+    created = client.post("/logs/weight", headers=_auth(token), json={"weight_kg": 79.5})
+    assert created.status_code == 201, created.text
+    log_id = created.json()["id"]
+
+    listing = client.get("/logs/weight", headers=_auth(token))
+    assert listing.status_code == 200
+    assert len(listing.json()) == 1
+
+    assert client.delete(f"/logs/weight/{log_id}", headers=_auth(token)).status_code == 204
+    # Deleting again is a 404 (gone / not the caller's).
+    assert client.delete(f"/logs/weight/{log_id}", headers=_auth(token)).status_code == 404
+
+
+def test_water_log_validation_422(client: TestClient) -> None:
+    token = _user_with_profile(client)
+    r = client.post("/logs/water", headers=_auth(token), json={"volume_ml": 0})  # gt=0
+    assert r.status_code == 422
+
+
+def test_exercise_log_derives_calories(client: TestClient) -> None:
+    token = _user_with_profile(client)  # profile weight is 80 kg
+    r = client.post(
+        "/logs/exercise",
+        headers=_auth(token),
+        json={"exercise": "Running", "duration_min": 30},
+    )
+    assert r.status_code == 201, r.text
+    body = r.json()
+    assert body["met"] == 9.8
+    assert body["calories_burned_kcal"] == 392.0
+
+
+def test_exercise_log_requires_profile_404(client: TestClient) -> None:
+    token = _register_and_login(client)  # no profile created
+    r = client.post(
+        "/logs/exercise",
+        headers=_auth(token),
+        json={"exercise": "Running", "duration_min": 30},
+    )
+    assert r.status_code == 404
+
+
+def test_exercise_log_unknown_name_404(client: TestClient) -> None:
+    token = _user_with_profile(client)
+    r = client.post(
+        "/logs/exercise",
+        headers=_auth(token),
+        json={"exercise": "Quidditch", "duration_min": 30},
+    )
+    assert r.status_code == 404
+
+
+def test_progress_daily_summary(client: TestClient) -> None:
+    token = _user_with_profile(client)
+    day = "2026-07-04"
+    at = f"{day}T12:00:00Z"
+    client.post(
+        "/logs/food",
+        headers=_auth(token),
+        json={"name": "Oats", "calories_kcal": 300, "protein_g": 10, "logged_at": at},
+    )
+    client.post("/logs/water", headers=_auth(token), json={"volume_ml": 600, "logged_at": at})
+    client.post(
+        "/logs/exercise",
+        headers=_auth(token),
+        json={"exercise": "Running", "duration_min": 30, "logged_at": at},
+    )
+
+    r = client.get("/progress/daily", headers=_auth(token), params={"on": day})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["calories_consumed_kcal"] == 300.0
+    assert body["calories_burned_kcal"] == 392.0
+    assert body["net_calories_kcal"] == -92.0
+    assert body["water_ml"] == 600.0
+
+
+def test_progress_weight_trend(client: TestClient) -> None:
+    token = _user_with_profile(client)
+    for day, kg in [("2026-07-01", 82.0), ("2026-07-05", 79.0)]:
+        client.post(
+            "/logs/weight",
+            headers=_auth(token),
+            json={"weight_kg": kg, "logged_at": f"{day}T09:00:00Z"},
+        )
+    r = client.get("/progress/weight", headers=_auth(token))
+    assert r.status_code == 200
+    body = r.json()
+    assert body["start_kg"] == 82.0
+    assert body["latest_kg"] == 79.0
+    assert body["change_kg"] == -3.0
+
+
+def test_logs_isolated_per_user(client: TestClient) -> None:
+    token_a = _user_with_profile(client, email="a@example.com")
+    log_id = client.post("/logs/weight", headers=_auth(token_a), json={"weight_kg": 80}).json()[
+        "id"
+    ]
+
+    token_b = _user_with_profile(client, email="b@example.com")
+    assert client.get("/logs/weight", headers=_auth(token_b)).json() == []
+    # B cannot delete A's log.
+    assert client.delete(f"/logs/weight/{log_id}", headers=_auth(token_b)).status_code == 404

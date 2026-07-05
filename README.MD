@@ -19,15 +19,16 @@ app/
 │   ├── models.py      # Pydantic value objects: UserProfile, NutritionPlan, ...
 │   ├── nutrition.py   # BMR / TDEE / calorie target / macro engine (deterministic)
 │   ├── meals.py       # Deterministic meal-plan generation
+│   ├── tracking.py    # Log value objects + pure analytics (MET calories, daily sum)
 │   ├── exceptions.py  # Domain error hierarchy
 │   └── repositories.py# Repository *ports* (Protocols) — pure, no storage import
 ├── db/                # Persistence infrastructure (only place importing SQLAlchemy)
 │   ├── base.py        # DeclarativeBase + naming convention
 │   ├── engine.py      # Engine/sessionmaker from Settings + session_scope()
-│   └── models.py      # ORM models (UserProfileRecord)
+│   └── models.py      # ORM models (users, profiles, plans, tokens, tracking logs)
 ├── repositories/      # Repository *adapters* (SQLAlchemy) + row<->domain mapping
 ├── security/          # Password hashing (Argon2) + JWT create/decode
-├── services/          # Application services (use cases): auth, profile, plan
+├── services/          # Application services (use cases): auth, profile, plan, tracking
 ├── schemas/           # HTTP request/response models (Pydantic DTOs)
 ├── api/               # FastAPI adapter: app factory, routers, DI, error mapping
 ├── config.py          # Typed Settings (pydantic-settings), loaded from .env
@@ -101,10 +102,26 @@ import HTTP types.
 | `POST /plans`            | Bearer | Generate a plan from the current profile       |
 | `GET  /plans`            | Bearer | Plan history (summaries, newest first)         |
 | `GET  /plans/{id}`       | Bearer | Fetch one plan in full (404 if not the caller's)|
+| `POST /logs/{kind}`      | Bearer | Record a log — `kind` ∈ weight/water/food/exercise |
+| `GET  /logs/{kind}`      | Bearer | Log history for a kind (newest first)          |
+| `DELETE /logs/{kind}/{id}`| Bearer | Delete one log entry (404 if not the caller's) |
+| `GET  /progress/daily`   | Bearer | Daily summary (calories in/out, macros, water) |
+| `GET  /progress/weight`  | Bearer | Weight series + net change over a date range   |
 
 Access tokens are short-lived Bearer JWTs; refresh tokens are longer-lived,
-stored **hashed**, and revocable. All profile/plan reads are user-scoped — a
+stored **hashed**, and revocable. All profile/plan/log reads are user-scoped — a
 resource that isn't the caller's returns `404`, so existence isn't leaked.
+
+### Tracking & progress (Phase 5)
+
+Users log what actually happened — weigh-ins, water, food (with its nutrition),
+and exercise. Exercise **calories burned** are derived server-side from the
+catalogue MET and the user's current-profile weight (`kcal = MET · weight · hrs`)
+and stored, so history stays stable even if weight or the catalogue later change.
+`logged_at` defaults to now but may be supplied to back-date an entry. Progress
+views aggregate logs by **UTC** day: `/progress/daily` sums calories in vs out,
+macros, and water; `/progress/weight` returns the weight series and its net
+change. All the arithmetic lives in the pure `app/domain/tracking.py`.
 
 ## Development
 
@@ -140,5 +157,5 @@ Runtime dependencies are pinned in `requirements.txt` (generated via
 | 2 | Config (pydantic-settings), structured logging, error handling | ✅ done |
 | 3 | Persistence: SQLAlchemy + Alembic + PostgreSQL (docker-compose) | ✅ done |
 | 4 | FastAPI app + JWT auth + user profile endpoints | ✅ done |
-| 5 | Tracking & analytics: nutrition/water/exercise/weight logs, progress | planned |
+| 5 | Tracking & analytics: nutrition/water/exercise/weight logs, progress | ✅ done |
 | 6 | Dockerfile, CI, docs; recommendation seam for future AI features | planned |
