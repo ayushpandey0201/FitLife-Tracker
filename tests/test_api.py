@@ -324,3 +324,25 @@ def test_logs_isolated_per_user(client: TestClient) -> None:
     assert client.get("/logs/weight", headers=_auth(token_b)).json() == []
     # B cannot delete A's log.
     assert client.delete(f"/logs/weight/{log_id}", headers=_auth(token_b)).status_code == 404
+
+
+# --- recommendations (Phase 6) ---------------------------------------------
+def test_recommendations_require_auth(client: TestClient) -> None:
+    assert client.get("/recommendations").status_code == 401
+
+
+def test_recommendations_require_profile_404(client: TestClient) -> None:
+    token = _register_and_login(client)  # no profile
+    assert client.get("/recommendations", headers=_auth(token)).status_code == 404
+
+
+def test_recommendations_returned_for_user(client: TestClient) -> None:
+    token = _user_with_profile(client)
+    r = client.get("/recommendations", headers=_auth(token))
+    assert r.status_code == 200
+    body = r.json()
+    assert isinstance(body, list) and body
+    # A fresh user with no logs today is nudged to start logging.
+    assert any(rec["category"] == "logging" for rec in body)
+    # Every item carries the documented shape.
+    assert {"category", "level", "message"} <= body[0].keys()

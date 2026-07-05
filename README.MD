@@ -20,6 +20,7 @@ app/
 │   ├── nutrition.py   # BMR / TDEE / calorie target / macro engine (deterministic)
 │   ├── meals.py       # Deterministic meal-plan generation
 │   ├── tracking.py    # Log value objects + pure analytics (MET calories, daily sum)
+│   ├── recommendations.py # Recommender *port* + deterministic rule-based default
 │   ├── exceptions.py  # Domain error hierarchy
 │   └── repositories.py# Repository *ports* (Protocols) — pure, no storage import
 ├── db/                # Persistence infrastructure (only place importing SQLAlchemy)
@@ -28,7 +29,7 @@ app/
 │   └── models.py      # ORM models (users, profiles, plans, tokens, tracking logs)
 ├── repositories/      # Repository *adapters* (SQLAlchemy) + row<->domain mapping
 ├── security/          # Password hashing (Argon2) + JWT create/decode
-├── services/          # Application services (use cases): auth, profile, plan, tracking
+├── services/          # Application services: auth, profile, plan, tracking, recommendation
 ├── schemas/           # HTTP request/response models (Pydantic DTOs)
 ├── api/               # FastAPI adapter: app factory, routers, DI, error mapping
 ├── config.py          # Typed Settings (pydantic-settings), loaded from .env
@@ -107,6 +108,7 @@ import HTTP types.
 | `DELETE /logs/{kind}/{id}`| Bearer | Delete one log entry (404 if not the caller's) |
 | `GET  /progress/daily`   | Bearer | Daily summary (calories in/out, macros, water) |
 | `GET  /progress/weight`  | Bearer | Weight series + net change over a date range   |
+| `GET  /recommendations`  | Bearer | Personalised guidance from profile + plan + logs |
 
 Access tokens are short-lived Bearer JWTs; refresh tokens are longer-lived,
 stored **hashed**, and revocable. All profile/plan/log reads are user-scoped — a
@@ -122,6 +124,46 @@ and stored, so history stays stable even if weight or the catalogue later change
 views aggregate logs by **UTC** day: `/progress/daily` sums calories in vs out,
 macros, and water; `/progress/weight` returns the weight series and its net
 change. All the arithmetic lives in the pure `app/domain/tracking.py`.
+
+### Recommendations & the AI seam (Phase 6)
+
+`GET /recommendations` returns personalised, actionable guidance (hydration,
+protein, calories, weight-trend, activity, logging) built from the user's
+profile, plan targets, and what they logged today. The point of the phase is the
+**seam**, not the rules: `app/domain/recommendations.py` defines a `Recommender`
+**port** (Protocol), and today's `RuleBasedRecommender` is one deterministic
+adapter behind it. `RecommendationService` assembles a pure `RecommendationContext`
+and delegates to whichever recommender is injected.
+
+To add AI later, implement `Recommender` (e.g. an LLM given the same context) and
+override one provider — `provide_recommendation_service` in
+`app/api/dependencies/services.py`. No router, service, or domain code changes;
+the HTTP contract is unchanged. Keeping the context pure (no I/O) means the AI
+adapter receives exactly the data it needs and stays independently testable.
+
+## Docker
+
+A multi-stage `Dockerfile` (uv build → slim, non-root runtime) serves the API;
+`docker-compose.yml` runs the full stack locally:
+
+```bash
+docker compose up --build api      # Postgres + API at http://localhost:8000
+```
+
+The `api` service waits for a healthy database, applies `alembic upgrade head`,
+then serves. A container never assumes it owns the schema — migrations are an
+explicit step (run separately in production). Override `JWT_SECRET_KEY` with a
+strong value for any real deployment (the app refuses to boot in `production`
+with the built-in dev secret).
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every push and PR:
+
+- **quality** — `ruff format --check`, `ruff check`, `mypy` (strict), and
+  `pytest` with coverage;
+- **migrations** — applies the Alembic migrations against a real Postgres
+  service and asserts no schema drift (`alembic check`).
 
 ## Development
 
@@ -158,4 +200,4 @@ Runtime dependencies are pinned in `requirements.txt` (generated via
 | 3 | Persistence: SQLAlchemy + Alembic + PostgreSQL (docker-compose) | ✅ done |
 | 4 | FastAPI app + JWT auth + user profile endpoints | ✅ done |
 | 5 | Tracking & analytics: nutrition/water/exercise/weight logs, progress | ✅ done |
-| 6 | Dockerfile, CI, docs; recommendation seam for future AI features | planned |
+| 6 | Dockerfile, CI, docs; recommendation seam for future AI features | ✅ done |
